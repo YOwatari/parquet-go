@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	. "github.com/xitongsys/parquet-go/Common"
-	"github.com/xitongsys/parquet-go/parquet"
+	. "github.com/YOwatari/parquet-go/Common"
+	"github.com/YOwatari/parquet-go/parquet"
 )
 
 func TestToInt64(t *testing.T) {
