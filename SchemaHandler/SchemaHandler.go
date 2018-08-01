@@ -4,6 +4,7 @@ import (
 	"errors"
 	"reflect"
 
+	"fmt"
 	"github.com/YOwatari/parquet-go/Common"
 	"github.com/YOwatari/parquet-go/parquet"
 )
@@ -201,13 +202,19 @@ func NewSchemaHandlerFromStruct(obj interface{}) (sh *SchemaHandler, err error) 
 		stack = stack[:ln-1]
 		var newInfo *Common.Tag
 
-		if item.GoType.Kind() == reflect.Struct {
+		fmt.Printf("item: %+v\n", item)
+		fmt.Printf("item.Info: %+v\n", item.Info)
+
+		if item.GoType.Kind() == reflect.Struct &&
+			item.Info.RepetitionType != parquet.FieldRepetitionType_REPEATED {
 			schema := parquet.NewSchemaElement()
 			schema.Name = item.Info.InName
 			schema.RepetitionType = &item.Info.RepetitionType
 			numField := int32(item.GoType.NumField())
 			schema.NumChildren = &numField
 			schemaElements = append(schemaElements, schema)
+
+			fmt.Println(schema)
 
 			newInfo = Common.NewTag()
 			Common.DeepCopy(item.Info, newInfo)
@@ -217,8 +224,13 @@ func NewSchemaHandlerFromStruct(obj interface{}) (sh *SchemaHandler, err error) 
 				f := item.GoType.Field(i)
 				tagStr := f.Tag.Get("parquet")
 
+				if f.Type.Kind() == reflect.Struct {
+
+				}
+
 				//ignore item without parquet tag
 				if len(tagStr) <= 0 {
+					fmt.Printf("skip: %+v\n", f)
 					numField--
 					continue
 				}
@@ -230,9 +242,46 @@ func NewSchemaHandlerFromStruct(obj interface{}) (sh *SchemaHandler, err error) 
 				if f.Type.Kind() == reflect.Ptr {
 					newItem.GoType = f.Type.Elem()
 					newItem.Info.RepetitionType = parquet.FieldRepetitionType_OPTIONAL
+				} else if f.Type.Kind() == reflect.Struct {
+					newItem.Info.RepetitionType = parquet.FieldRepetitionType_REPEATED
 				}
 				stack = append(stack, newItem)
 			}
+
+		} else if item.GoType.Kind() == reflect.Struct &&
+				item.Info.RepetitionType == parquet.FieldRepetitionType_REPEATED {
+				schema := parquet.NewSchemaElement()
+				schema.Name = item.Info.InName
+				schema.RepetitionType = &item.Info.RepetitionType
+				numField := int32(item.GoType.NumField())
+				schema.NumChildren = &numField
+				schemaElements = append(schemaElements, schema)
+
+				newInfo = Common.NewTag()
+				Common.DeepCopy(item.Info, newInfo)
+				infos = append(infos, newInfo)
+
+				for i := int(numField - 1); i >= 0; i-- {
+					f := item.GoType.Field(i)
+					tagStr := f.Tag.Get("parquet")
+
+					//ignore item without parquet tag
+					if len(tagStr) <= 0 && f.Type.Kind() != reflect.Struct {
+						numField--
+						continue
+					}
+
+					newItem := NewItem()
+					newItem.Info = Common.StringToTag(tagStr)
+					newItem.Info.InName = f.Name
+					newItem.GoType = f.Type
+					if f.Type.Kind() == reflect.Ptr {
+						newItem.GoType = f.Type.Elem()
+						newItem.Info.RepetitionType = parquet.FieldRepetitionType_OPTIONAL
+					}
+					stack = append(stack, newItem)
+				}
+
 		} else if item.GoType.Kind() == reflect.Slice &&
 			item.Info.RepetitionType != parquet.FieldRepetitionType_REPEATED {
 			schema := parquet.NewSchemaElement()

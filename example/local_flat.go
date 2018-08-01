@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"time"
 
 	"github.com/YOwatari/parquet-go/ParquetFile"
 	"github.com/YOwatari/parquet-go/ParquetReader"
@@ -11,13 +10,17 @@ import (
 )
 
 type Student struct {
+	Name
+	ID
+	Age int64 `parquet:"name=age, Type=INT64"`
+}
+
+type Name struct {
 	Name    string  `parquet:"name=name, type=UTF8, encoding=PLAIN_DICTIONARY"`
-	Age     int32   `parquet:"name=age, type=INT32"`
-	Id      int64   `parquet:"name=id, type=INT64"`
-	Weight  float32 `parquet:"name=weight, type=FLOAT"`
-	Sex     bool    `parquet:"name=sex, type=BOOLEAN"`
-	Day     int32   `parquet:"name=day, type=DATE"`
-	Ignored int32   //without parquet tag and won't write
+}
+
+type ID struct {
+	ID      int64   `parquet:"name=id, type=INT64"`
 }
 
 func main() {
@@ -40,12 +43,9 @@ func main() {
 	num := 100
 	for i := 0; i < num; i++ {
 		stu := Student{
-			Name:   "StudentName",
-			Age:    int32(20 + i%5),
-			Id:     int64(i),
-			Weight: float32(50.0 + float32(i)*0.1),
-			Sex:    bool(i%2 == 0),
-			Day:    int32(time.Now().Unix() / 3600 / 24),
+			Name{"StudentName"},
+			ID{     int64(i)},
+			int64(i),
 		}
 		if err = pw.Write(stu); err != nil {
 			log.Println("Write error", err)
